@@ -1,0 +1,2140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TuneWeave - Collaborative Music Blending</title>
+    <!-- 
+    TUNEWEAVE - Single File Music Collaboration App
+    ================================================
+    FEATURES:
+    - Animated landing screen with musical particles
+    - Audio upload and recording capabilities
+    - Visual waveform mixing interface
+    - Collaborative avatar simulation
+    - Real-time audio visualization
+    - Multiple blend modes and effects
+    - Export mixed audio and visualizations
+    
+    USAGE:
+    1. Open in modern browser (Chrome/Firefox recommended)
+    2. Click "Start Creating" to enter workspace
+    3. Upload audio files or use demo tracks
+    4. Arrange layers and apply blend modes
+    5. Play, mix, and export your creation
+    
+    BROWSER SUPPORT:
+    - Chrome 80+ (full support)
+    - Firefox 75+ (good support)
+    - Safari 14+ (limited Web Audio features)
+    
+    DEPENDENCIES:
+    - Howler.js (audio playback)
+    - GSAP (animations)
+    - No other external dependencies
+    
+    LIMITATIONS:
+    - Audio recording requires HTTPS
+    - Large files may impact performance
+    - Export quality depends on browser support
+    ================================================
+    -->
+    
+    <!-- GSAP for advanced animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <!-- Howler.js for audio handling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    
+    <style>
+        /* =============================================================================
+           TUNEWEAVE - CSS STYLES
+           ============================================================================= */
+        
+        :root {
+            /* Neon color palette */
+            --bg-primary: #0e0f2f;
+            --bg-secondary: #1a1b4b;
+            --bg-tertiary: #252670;
+            --accent-primary: #8b5cf6;
+            --accent-secondary: #06b6d4;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --neon-pink: #ec4899;
+            --neon-cyan: #00f5ff;
+            --neon-purple: #a855f7;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            
+            --border-radius: 16px;
+            --glow: 0 0 20px currentColor;
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1b4b 50%, #0f0f23 100%);
+        }
+
+        /* Landing Screen */
+        .landing-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1a1b4b 0%, var(--bg-primary) 70%);
+            z-index: 1000;
+            transition: opacity 1s ease, transform 1s ease;
+        }
+
+        .landing-screen.hidden {
+            opacity: 0;
+            transform: scale(1.1);
+            pointer-events: none;
+        }
+
+        .hero-content {
+            text-align: center;
+            z-index: 2;
+            position: relative;
+        }
+
+        .logo {
+            margin-bottom: 2rem;
+        }
+
+        .logo-icon {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--neon-cyan));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 3rem;
+            color: white;
+            box-shadow: 0 0 50px var(--accent-primary);
+            animation: pulse 2s infinite, float 6s ease-in-out infinite;
+        }
+
+        .logo h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-primary), var(--neon-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+        }
+
+        .tagline {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            opacity: 0.9;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, var(--accent-primary), var(--neon-cyan));
+            border: none;
+            padding: 1.2rem 3rem;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: white;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 0 50px rgba(139, 92, 246, 0.8);
+        }
+
+        .start-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .start-btn:hover::before {
+            left: 100%;
+        }
+
+        /* Musical Particles */
+        .particles-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--neon-cyan);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--neon-cyan);
+            opacity: 0.7;
+        }
+
+        /* Main App Container */
+        .app-container {
+            display: none;
+            grid-template-areas:
+                "header header"
+                "visualizer controls"
+                "layers layers";
+            grid-template-rows: 80px 1fr 300px;
+            grid-template-columns: 1fr 400px;
+            height: 100vh;
+            gap: 1px;
+            background: var(--bg-secondary);
+        }
+
+        .app-container.active {
+            display: grid;
+            animation: fadeIn 1s ease;
+        }
+
+        @media (max-width: 1024px) {
+            .app-container {
+                grid-template-areas:
+                    "header"
+                    "visualizer"
+                    "controls"
+                    "layers";
+                grid-template-columns: 1fr;
+                grid-template-rows: 80px 400px auto 300px;
+            }
+        }
+
+        /* Header */
+        .header {
+            grid-area: header;
+            background: rgba(26, 27, 75, 0.9);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            border-bottom: 1px solid var(--bg-tertiary);
+        }
+
+        .app-logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .app-logo .icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--neon-cyan));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* Visualizer */
+        .visualizer-section {
+            grid-area: visualizer;
+            background: var(--bg-primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #visualizerCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .collaboration-avatars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .avatar {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 0 20px var(--neon-pink);
+            cursor: pointer;
+            pointer-events: all;
+            transition: var(--transition);
+        }
+
+        .avatar:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 30px var(--neon-pink);
+        }
+
+        /* Controls Panel */
+        .controls-panel {
+            grid-area: controls;
+            background: rgba(26, 27, 75, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-left: 1px solid var(--bg-tertiary);
+            overflow-y: auto;
+        }
+
+        .panel-section {
+            margin-bottom: 2rem;
+        }
+
+        .panel-section h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .panel-section h3::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--accent-primary);
+            border-radius: 2px;
+        }
+
+        /* Playback Controls */
+        .playback-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .central-play-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--neon-cyan));
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .central-play-btn.playing {
+            box-shadow: 0 0 50px rgba(6, 182, 212, 0.8);
+        }
+
+        .central-play-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .progress-ring {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border: 3px solid transparent;
+            border-top-color: var(--neon-cyan);
+            border-radius: 50%;
+            animation: rotate 20s linear infinite;
+            opacity: 0.7;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--accent-primary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:hover {
+            background: var(--accent-primary);
+            box-shadow: var(--glow);
+        }
+
+        .control-btn.active {
+            background: var(--accent-primary);
+            box-shadow: var(--glow);
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed var(--bg-tertiary);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+            transition: var(--transition);
+            cursor: pointer;
+            background: rgba(37, 38, 112, 0.3);
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent-primary);
+            background: rgba(37, 38, 112, 0.5);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.7;
+        }
+
+        /* Blend Modes */
+        .blend-modes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .blend-btn {
+            padding: 0.8rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid transparent;
+            border-radius: var(--border-radius);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+        }
+
+        .blend-btn:hover {
+            border-color: var(--accent-primary);
+            box-shadow: var(--glow);
+        }
+
+        .blend-btn.active {
+            background: var(--accent-primary);
+            box-shadow: var(--glow);
+        }
+
+        /* Layers Section */
+        .layers-section {
+            grid-area: layers;
+            background: rgba(26, 27, 75, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-top: 1px solid var(--bg-tertiary);
+            overflow-x: auto;
+        }
+
+        .layers-container {
+            display: flex;
+            gap: 1rem;
+            height: 100%;
+            align-items: center;
+        }
+
+        .layer {
+            min-width: 200px;
+            height: 120px;
+            background: var(--bg-tertiary);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            cursor: grab;
+            transition: var(--transition);
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .layer:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-primary);
+            box-shadow: var(--glow);
+        }
+
+        .layer.active {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 20px var(--neon-cyan);
+        }
+
+        .layer-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-bottom: 0.5rem;
+        }
+
+        .layer-waveform {
+            width: 100%;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin: 0.5rem 0;
+            overflow: hidden;
+        }
+
+        .waveform-bar {
+            height: 100%;
+            background: currentColor;
+            border-radius: 2px;
+            transition: transform 0.1s ease;
+        }
+
+        .layer-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .volume-slider {
+            width: 60%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-primary);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), var(--neon-cyan));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--accent-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent-primary);
+            box-shadow: var(--glow);
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 50px var(--accent-primary); }
+            50% { transform: scale(1.05); box-shadow: 0 0 70px var(--accent-primary); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes beat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .beat-animation {
+            animation: beat 0.5s ease-in-out;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(14, 15, 47, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--accent-primary);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 0.5rem;
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--neon-cyan));
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-4 {
+            margin-top: 1rem;
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-primary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-secondary);
+        }
+
+        /* Focus styles */
+        button:focus-visible, 
+        input:focus-visible, 
+        select:focus-visible {
+            outline: 2px solid var(--neon-cyan);
+            outline-offset: 2px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .logo h1 {
+                font-size: 2.5rem;
+            }
+            
+            .tagline {
+                font-size: 1.2rem;
+            }
+            
+            .controls-panel {
+                padding: 1rem;
+            }
+            
+            .layer {
+                min-width: 160px;
+                height: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Landing Screen -->
+    <div class="landing-screen" id="landingScreen">
+        <div class="particles-container" id="particlesContainer"></div>
+        <div class="hero-content">
+            <div class="logo">
+                <div class="logo-icon">🎵</div>
+                <h1>TuneWeave</h1>
+            </div>
+            <div class="tagline">Blend melodies. Create together.</div>
+            <button class="start-btn" id="startBtn">
+                Start Creating
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div class="app-container" id="appContainer">
+        <!-- Header -->
+        <header class="header">
+            <div class="app-logo">
+                <div class="icon">TW</div>
+                <h2>TuneWeave</h2>
+            </div>
+            <div class="header-controls">
+                <button class="btn btn-secondary" id="exportBtn">
+                    📤 Export
+                </button>
+                <button class="btn btn-secondary" id="helpBtn">
+                    ❓ Help
+                </button>
+            </div>
+        </header>
+
+        <!-- Visualizer Section -->
+        <section class="visualizer-section">
+            <canvas id="visualizerCanvas"></canvas>
+            <div class="collaboration-avatars" id="collaborationAvatars">
+                <!-- Avatars will be dynamically added -->
+            </div>
+        </section>
+
+        <!-- Controls Panel -->
+        <aside class="controls-panel">
+            <!-- Playback Controls -->
+            <div class="panel-section">
+                <h3>Playback</h3>
+                <div class="playback-controls">
+                    <button class="central-play-btn" id="playPauseBtn">
+                        ▶
+                        <div class="progress-ring" id="progressRing"></div>
+                    </button>
+                    <div class="control-buttons">
+                        <button class="control-btn" id="loopBtn" title="Loop">🔁</button>
+                        <button class="control-btn" id="shuffleBtn" title="Shuffle">🔀</button>
+                        <button class="control-btn" id="muteBtn" title="Mute">🔊</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="panel-section">
+                <h3>Add Audio</h3>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">🎵</div>
+                    <div style="margin-bottom: 1rem;">
+                        <strong>Drop audio files here</strong>
+                    </div>
+                    <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+                        or click to select files
+                    </div>
+                    <input type="file" id="fileInput" accept="audio/mp3,audio/wav,audio/midi" multiple 
+                           style="display: none;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+                        Choose Files
+                    </button>
+                </div>
+                
+                <div class="mt-4">
+                    <button class="btn btn-secondary" id="demoBtn" style="width: 100%;">
+                        🎬 Load Demo Tracks
+                    </button>
+                </div>
+            </div>
+
+            <!-- Blend Modes -->
+            <div class="panel-section">
+                <h3>Blend Modes</h3>
+                <div class="blend-modes">
+                    <button class="blend-btn" data-mode="dreamy">Dreamy</button>
+                    <button class="blend-btn" data-mode="echo">Echo</button>
+                    <button class="blend-btn" data-mode="bounce">Bounce</button>
+                    <button class="blend-btn" data-mode="harmony">Harmony</button>
+                    <button class="blend-btn" data-mode="pulse">Pulse</button>
+                    <button class="blend-btn" data-mode="glitch">Glitch</button>
+                </div>
+            </div>
+
+            <!-- AI Blend -->
+            <div class="panel-section">
+                <h3>AI Assist</h3>
+                <button class="btn btn-primary" id="autoBlendBtn" style="width: 100%;">
+                    🪄 Auto-Blend
+                </button>
+            </div>
+        </aside>
+
+        <!-- Layers Section -->
+        <section class="layers-section">
+            <div class="layers-container" id="layersContainer">
+                <!-- Layers will be dynamically added here -->
+                <div class="text-center" style="color: var(--text-muted); padding: 2rem; width: 100%;">
+                    Add audio files to create mixing layers
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Export Your Mix</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Export Format</label>
+                    <select id="exportFormat" style="width: 100%; padding: 0.8rem; border-radius: var(--border-radius); background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--accent-primary);">
+                        <option value="audio">Audio Mix (MP3)</option>
+                        <option value="video">Visualizer Video</option>
+                        <option value="project">Project File</option>
+                    </select>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="exportProgress"></div>
+                </div>
+                
+                <div id="exportStatus" style="font-size: 0.9rem; color: var(--text-muted); text-align: center; margin: 1rem 0;">
+                    Ready to export
+                </div>
+
+                <button id="startExportBtn" class="btn btn-primary" style="width: 100%;">
+                    Start Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal" id="helpModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>How to Use TuneWeave</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="line-height: 1.8;">
+                    <p><strong>1. Add Audio:</strong> Upload files or use demo tracks</p>
+                    <p><strong>2. Arrange Layers:</strong> Drag to reorder mixing layers</p>
+                    <p><strong>3. Apply Effects:</strong> Use blend modes for different sounds</p>
+                    <p><strong>4. Collaborate:</strong> Click avatars to focus on parts</p>
+                    <p><strong>5. Export:</strong> Save your final mix</p>
+                </div>
+                <div class="mt-4" style="font-size: 0.9rem; color: var(--text-muted);">
+                    <p>💡 <strong>Tip:</strong> Use Auto-Blend for instant harmony</p>
+                    <p>🎵 <strong>Shortcuts:</strong> Space = Play/Pause, Arrows = Navigate</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =============================================================================
+        // TUNEWEAVE - JAVASCRIPT APPLICATION
+        // =============================================================================
+        // Complete music collaboration app with visualization and mixing
+        
+        // DEMO AUDIO TRACKS (Base64 encoded short clips)
+        // =============================================================================
+        const DEMO_TRACKS = {
+            // Short synth melody
+            synth: 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAABAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8AAABQTEFNRTMuMTAwBKkAAAAAAAAAADUgJAOHQQAB9AAACsBVkCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+            
+            // Short guitar riff
+            guitar: 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAABAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8AAABQTEFNRTMuMTAwBKkAAAAAAAAAADUgJAOHQQAB9AAACsBVkCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+            
+            // Drum beat
+            drums: 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAABAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8AAABQTEFNRTMuMTAwBKkAAAAAAAAAADUgJAOHQQAB9AAACsBVkCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+        };
+
+        // =============================================================================
+        // APPLICATION STATE AND CONFIGURATION
+        // =============================================================================
+        const CONFIG = {
+            MAX_LAYERS: 8,
+            SAMPLE_RATE: 44100,
+            FFT_SIZE: 2048,
+            BEAT_THRESHOLD: 0.3,
+            COLORS: ['#8b5cf6', '#06b6d4', '#ec4899', '#10b981', '#f59e0b', '#a855f7']
+        };
+
+        let appState = {
+            layers: [],
+            isPlaying: false,
+            currentTime: 0,
+            duration: 0,
+            blendMode: 'dreamy',
+            audioContext: null,
+            analyser: null,
+            isMuted: false,
+            isLooping: false
+        };
+
+        // =============================================================================
+        // LANDING SCREEN ANIMATIONS
+        // =============================================================================
+        class LandingAnimations {
+            static init() {
+                this.createParticles();
+                this.setupEventListeners();
+            }
+
+            static createParticles() {
+                const container = document.getElementById('particlesContainer');
+                const particleCount = 50;
+
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    
+                    // Random properties
+                    const size = Math.random() * 6 + 2;
+                    const posX = Math.random() * 100;
+                    const posY = Math.random() * 100;
+                    const delay = Math.random() * 5;
+                    const duration = Math.random() * 10 + 10;
+                    const color = this.getRandomColor();
+                    
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+                    particle.style.background = color;
+                    particle.style.boxShadow = `0 0 10px ${color}`;
+                    particle.style.left = `${posX}%`;
+                    particle.style.top = `${posY}%`;
+                    
+                    // GSAP animation
+                    gsap.to(particle, {
+                        x: 'random(-100, 100)',
+                        y: 'random(-100, 100)',
+                        rotation: 'random(0, 360)',
+                        duration: duration,
+                        delay: delay,
+                        repeat: -1,
+                        yoyo: true,
+                        ease: 'sine.inOut'
+                    });
+
+                    container.appendChild(particle);
+                }
+            }
+
+            static getRandomColor() {
+                const colors = [
+                    '#8b5cf6', '#06b6d4', '#ec4899', '#10b981', '#f59e0b'
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            static setupEventListeners() {
+                document.getElementById('startBtn').addEventListener('click', () => {
+                    this.transitionToApp();
+                });
+            }
+
+            static transitionToApp() {
+                const landingScreen = document.getElementById('landingScreen');
+                const appContainer = document.getElementById('appContainer');
+                
+                // Animate out landing screen
+                gsap.to(landingScreen, {
+                    opacity: 0,
+                    scale: 1.1,
+                    duration: 1,
+                    ease: 'power2.inOut',
+                    onComplete: () => {
+                        landingScreen.classList.add('hidden');
+                        appContainer.classList.add('active');
+                        
+                        // Initialize main app
+                        MainApp.init();
+                    }
+                });
+            }
+        }
+
+        // =============================================================================
+        // MAIN APPLICATION
+        // =============================================================================
+        class MainApp {
+            static init() {
+                this.setupAudioContext();
+                this.setupEventListeners();
+                this.createCollaborationAvatars();
+                Visualizer.init();
+                this.loadInitialDemo();
+            }
+
+            static setupAudioContext() {
+                try {
+                    appState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    appState.analyser = appState.audioContext.createAnalyser();
+                    appState.analyser.fftSize = CONFIG.FFT_SIZE;
+                } catch (error) {
+                    console.warn('Web Audio API not supported:', error);
+                    this.showError('Web Audio API not supported. Please use Chrome or Firefox.');
+                }
+            }
+
+            static setupEventListeners() {
+                // File upload
+                const uploadArea = document.getElementById('uploadArea');
+                const fileInput = document.getElementById('fileInput');
+
+                uploadArea.addEventListener('click', () => fileInput.click());
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.style.borderColor = 'var(--accent-primary)';
+                });
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.style.borderColor = 'var(--bg-tertiary)';
+                });
+                uploadArea.addEventListener('drop', this.handleFileDrop.bind(this));
+
+                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+                // Demo content
+                document.getElementById('demoBtn').addEventListener('click', this.loadDemoTracks.bind(this));
+
+                // Playback controls
+                document.getElementById('playPauseBtn').addEventListener('click', this.togglePlayback.bind(this));
+                document.getElementById('loopBtn').addEventListener('click', this.toggleLoop.bind(this));
+                document.getElementById('muteBtn').addEventListener('click', this.toggleMute.bind(this));
+
+                // Blend modes
+                document.querySelectorAll('.blend-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.setBlendMode(e.target.dataset.mode);
+                    });
+                });
+
+                // AI Blend
+                document.getElementById('autoBlendBtn').addEventListener('click', this.autoBlend.bind(this));
+
+                // Export
+                document.getElementById('exportBtn').addEventListener('click', this.showExportModal.bind(this));
+                document.getElementById('helpBtn').addEventListener('click', this.showHelpModal.bind(this));
+                document.getElementById('startExportBtn').addEventListener('click', this.startExport.bind(this));
+
+                // Modal controls
+                document.querySelectorAll('.close-modal').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.target.closest('.modal').classList.remove('active');
+                    });
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', this.handleKeyboardShortcut.bind(this));
+            }
+
+            static handleFileDrop(e) {
+                e.preventDefault();
+                const uploadArea = document.getElementById('uploadArea');
+                uploadArea.style.borderColor = 'var(--bg-tertiary)';
+                
+                const files = Array.from(e.dataTransfer.files).filter(file => 
+                    file.type.startsWith('audio/')
+                );
+                this.processAudioFiles(files);
+            }
+
+            static handleFileSelect(e) {
+                const files = Array.from(e.target.files).filter(file => 
+                    file.type.startsWith('audio/')
+                );
+                this.processAudioFiles(files);
+            }
+
+            static processAudioFiles(files) {
+                if (files.length === 0) {
+                    this.showNotification('No audio files selected', 'error');
+                    return;
+                }
+
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.createAudioLayer(file.name, e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                });
+
+                this.showNotification(`Added ${files.length} audio tracks`);
+            }
+
+            static createAudioLayer(name, audioData, color = null) {
+                if (appState.layers.length >= CONFIG.MAX_LAYERS) {
+                    this.showNotification('Maximum layers reached', 'error');
+                    return;
+                }
+
+                const layer = {
+                    id: Date.now() + Math.random(),
+                    name: name,
+                    audioData: audioData,
+                    color: color || CONFIG.COLORS[appState.layers.length % CONFIG.COLORS.length],
+                    volume: 1,
+                    pan: 0,
+                    sound: null,
+                    isPlaying: false
+                };
+
+                // Create Howl sound object
+                layer.sound = new Howl({
+                    src: [audioData],
+                    volume: layer.volume,
+                    onplay: () => {
+                        layer.isPlaying = true;
+                        this.updateLayerVisualization();
+                    },
+                    onpause: () => {
+                        layer.isPlaying = false;
+                    },
+                    onend: () => {
+                        layer.isPlaying = false;
+                    }
+                });
+
+                appState.layers.push(layer);
+                this.renderLayers();
+                this.updateDuration();
+            }
+
+            static renderLayers() {
+                const container = document.getElementById('layersContainer');
+                container.innerHTML = '';
+
+                if (appState.layers.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center" style="color: var(--text-muted); padding: 2rem; width: 100%;">
+                            Add audio files to create mixing layers
+                        </div>
+                    `;
+                    return;
+                }
+
+                appState.layers.forEach((layer, index) => {
+                    const layerElement = document.createElement('div');
+                    layerElement.className = 'layer';
+                    layerElement.setAttribute('data-layer-id', layer.id);
+                    layerElement.style.borderColor = layer.color;
+
+                    layerElement.innerHTML = `
+                        <div class="layer-color" style="background: ${layer.color}"></div>
+                        <div style="font-size: 0.9rem; font-weight: 500; margin-bottom: 0.5rem;">${layer.name}</div>
+                        <div class="layer-waveform">
+                            <div class="waveform-bar" style="width: 100%; background: ${layer.color};"></div>
+                        </div>
+                        <div class="layer-controls">
+                            <input type="range" class="volume-slider" min="0" max="1" step="0.1" value="${layer.volume}" 
+                                   style="accent-color: ${layer.color}">
+                            <button class="control-btn" style="font-size: 0.8rem;">❌</button>
+                        </div>
+                    `;
+
+                    // Volume control
+                    const volumeSlider = layerElement.querySelector('.volume-slider');
+                    volumeSlider.addEventListener('input', (e) => {
+                        layer.volume = parseFloat(e.target.value);
+                        if (layer.sound) {
+                            layer.sound.volume(layer.volume);
+                        }
+                    });
+
+                    // Delete button
+                    const deleteBtn = layerElement.querySelector('.control-btn');
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.removeLayer(index);
+                    });
+
+                    // Drag and drop for reordering
+                    layerElement.draggable = true;
+                    layerElement.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/plain', index);
+                        layerElement.classList.add('dragging');
+                    });
+
+                    layerElement.addEventListener('dragend', () => {
+                        layerElement.classList.remove('dragging');
+                    document.querySelectorAll('.layer').forEach(l => l.classList.remove('drag-over'));
+                    this.saveLayerOrder();
+                    this.showNotification('Layer order updated');
+                    Visualizer.updateVisualization();
+                    this.updateCollaborationAvatars();
+                });
+
+                container.appendChild(layerElement);
+            }
+
+            static removeLayer(index) {
+                if (appState.layers[index].sound) {
+                    appState.layers[index].sound.stop();
+                }
+                appState.layers.splice(index, 1);
+                this.renderLayers();
+                this.updateDuration();
+                this.showNotification('Layer removed');
+            }
+
+            static updateDuration() {
+                // Calculate total duration based on layers
+                let maxDuration = 0;
+                appState.layers.forEach(layer => {
+                    if (layer.sound) {
+                        maxDuration = Math.max(maxDuration, layer.sound.duration());
+                    }
+                });
+                appState.duration = maxDuration;
+            }
+
+            static togglePlayback() {
+                if (appState.layers.length === 0) {
+                    this.showNotification('Add audio tracks first', 'error');
+                    return;
+                }
+
+                appState.isPlaying = !appState.isPlaying;
+
+                const playBtn = document.getElementById('playPauseBtn');
+                if (appState.isPlaying) {
+                    playBtn.innerHTML = '⏸<div class="progress-ring" id="progressRing"></div>';
+                    playBtn.classList.add('playing');
+                    
+                    // Play all layers
+                    appState.layers.forEach(layer => {
+                        if (layer.sound) {
+                            layer.sound.play();
+                        }
+                    });
+
+                    // Start visualization
+                    Visualizer.startAnimation();
+                    this.startProgressAnimation();
+                } else {
+                    playBtn.innerHTML = '▶<div class="progress-ring" id="progressRing"></div>';
+                    playBtn.classList.remove('playing');
+                    
+                    // Pause all layers
+                    appState.layers.forEach(layer => {
+                        if (layer.sound) {
+                            layer.sound.pause();
+                        }
+                    });
+
+                    Visualizer.stopAnimation();
+                }
+            }
+
+            static toggleLoop() {
+                appState.isLooping = !appState.isLooping;
+                const loopBtn = document.getElementById('loopBtn');
+                loopBtn.classList.toggle('active', appState.isLooping);
+                
+                appState.layers.forEach(layer => {
+                    if (layer.sound) {
+                        layer.sound.loop(appState.isLooping);
+                    }
+                });
+
+                this.showNotification(appState.isLooping ? 'Loop enabled' : 'Loop disabled');
+            }
+
+            static toggleMute() {
+                appState.isMuted = !appState.isMuted;
+                const muteBtn = document.getElementById('muteBtn');
+                muteBtn.textContent = appState.isMuted ? '🔇' : '🔊';
+                muteBtn.classList.toggle('active', appState.isMuted);
+                
+                appState.layers.forEach(layer => {
+                    if (layer.sound) {
+                        layer.sound.mute(appState.isMuted);
+                    }
+                });
+            }
+
+            static setBlendMode(mode) {
+                appState.blendMode = mode;
+                
+                // Update UI
+                document.querySelectorAll('.blend-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.mode === mode);
+                });
+
+                // Apply visual effects
+                Visualizer.setBlendMode(mode);
+                this.showNotification(`${mode.charAt(0).toUpperCase() + mode.slice(1)} mode activated`);
+            }
+
+            static autoBlend() {
+                // Simulated AI blending - randomize volumes and apply effects
+                appState.layers.forEach(layer => {
+                    const newVolume = Math.random() * 0.8 + 0.2; // 0.2 to 1.0
+                    layer.volume = newVolume;
+                    if (layer.sound) {
+                        layer.sound.volume(newVolume);
+                    }
+                });
+
+                // Random blend mode
+                const modes = ['dreamy', 'echo', 'bounce', 'harmony', 'pulse', 'glitch'];
+                const randomMode = modes[Math.floor(Math.random() * modes.length)];
+                this.setBlendMode(randomMode);
+
+                this.renderLayers();
+                this.showNotification('AI blend applied!');
+            }
+
+            static startProgressAnimation() {
+                const progressRing = document.getElementById('progressRing');
+                if (progressRing) {
+                    gsap.to(progressRing, {
+                        rotation: 360,
+                        duration: 20,
+                        repeat: -1,
+                        ease: 'linear'
+                    });
+                }
+            }
+
+            static createCollaborationAvatars() {
+                const container = document.getElementById('collaborationAvatars');
+                const avatars = [
+                    { name: 'Alex', color: '#ec4899' },
+                    { name: 'Sam', color: '#06b6d4' },
+                    { name: 'Jordan', color: '#10b981' },
+                    { name: 'Taylor', color: '#f59e0b' }
+                ];
+
+                avatars.forEach((avatar, index) => {
+                    const avatarElement = document.createElement('div');
+                    avatarElement.className = 'avatar';
+                    avatarElement.textContent = avatar.name.charAt(0);
+                    avatarElement.style.background = `linear-gradient(135deg, ${avatar.color}, ${this.lightenColor(avatar.color, 20)})`;
+                    avatarElement.style.boxShadow = `0 0 20px ${avatar.color}`;
+
+                    // Position in circular pattern
+                    const angle = (index / avatars.length) * Math.PI * 2;
+                    const radius = 150;
+                    const centerX = 50; // percentage
+                    const centerY = 50;
+
+                    avatarElement.style.left = `calc(${centerX}% + ${Math.cos(angle) * radius}px)`;
+                    avatarElement.style.top = `calc(${centerY}% + ${Math.sin(angle) * radius}px)`;
+
+                    // Click to solo/mute other tracks
+                    avatarElement.addEventListener('click', () => {
+                        this.focusOnUser(avatar.name);
+                    });
+
+                    // Pulsing animation
+                    gsap.to(avatarElement, {
+                        scale: 1.1,
+                        duration: 0.5,
+                        repeat: -1,
+                        yoyo: true,
+                        ease: 'sine.inOut',
+                        delay: index * 0.2
+                    });
+
+                    container.appendChild(avatarElement);
+                });
+            }
+
+            static focusOnUser(userName) {
+                // Simulate focusing on a user's contribution
+                this.showNotification(`Now listening to ${userName}'s parts`);
+                
+                // Visual feedback
+                document.querySelectorAll('.avatar').forEach(avatar => {
+                    if (avatar.textContent === userName.charAt(0)) {
+                        avatar.classList.add('beat-animation');
+                        setTimeout(() => avatar.classList.remove('beat-animation'), 500);
+                    }
+                });
+            }
+
+            static lightenColor(color, percent) {
+                const num = parseInt(color.replace('#', ''), 16);
+                const amt = Math.round(2.55 * percent);
+                const R = (num >> 16) + amt;
+                const G = (num >> 8 & 0x00FF) + amt;
+                const B = (num & 0x0000FF) + amt;
+                return '#' + (
+                    0x1000000 +
+                    (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+                    (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+                    (B < 255 ? B < 1 ? 0 : B : 255)
+                ).toString(16).slice(1);
+            }
+
+            static updateLayerVisualization() {
+                // Update waveform bars based on playback
+                document.querySelectorAll('.layer').forEach((layerElement, index) => {
+                    const layer = appState.layers[index];
+                    if (layer && layer.sound) {
+                        const waveformBar = layerElement.querySelector('.waveform-bar');
+                        if (waveformBar && layer.isPlaying) {
+                            // Simulate waveform animation
+                            gsap.to(waveformBar, {
+                                scaleX: Math.random() * 0.5 + 0.5,
+                                duration: 0.1,
+                                ease: 'power1.out'
+                            });
+                        }
+                    }
+                });
+            }
+
+            static loadDemoTracks() {
+                // Clear existing layers
+                appState.layers.forEach(layer => {
+                    if (layer.sound) layer.sound.unload();
+                });
+                appState.layers = [];
+
+                // Add demo tracks
+                this.createAudioLayer('Synth Lead', DEMO_TRACKS.synth, '#8b5cf6');
+                this.createAudioLayer('Guitar Riff', DEMO_TRACKS.guitar, '#06b6d4');
+                this.createAudioLayer('Drum Beat', DEMO_TRACKS.drums, '#ec4899');
+
+                this.showNotification('Demo tracks loaded! Click play to start mixing.');
+            }
+
+            static loadInitialDemo() {
+                // Load one demo track to get started
+                setTimeout(() => {
+                    this.createAudioLayer('Demo Synth', DEMO_TRACKS.synth, '#8b5cf6');
+                }, 1000);
+            }
+
+            static showExportModal() {
+                document.getElementById('exportModal').classList.add('active');
+            }
+
+            static showHelpModal() {
+                document.getElementById('helpModal').classList.add('active');
+            }
+
+            static async startExport() {
+                const format = document.getElementById('exportFormat').value;
+                const progressBar = document.getElementById('exportProgress');
+                const statusText = document.getElementById('exportStatus');
+
+                progressBar.style.width = '0%';
+                statusText.textContent = 'Starting export...';
+
+                try {
+                    switch (format) {
+                        case 'audio':
+                            await this.exportAudioMix(progressBar, statusText);
+                            break;
+                        case 'video':
+                            await this.exportVisualizerVideo(progressBar, statusText);
+                            break;
+                        case 'project':
+                            this.exportProjectFile();
+                            break;
+                    }
+                    this.showConfetti();
+                    statusText.textContent = 'Export completed!';
+                } catch (error) {
+                    console.error('Export error:', error);
+                    statusText.textContent = 'Export failed: ' + error.message;
+                }
+            }
+
+            static async exportAudioMix(progressBar, statusText) {
+                statusText.textContent = 'Mixing audio... This may take a moment.';
+                
+                // Simulate mixing process
+                for (let i = 0; i <= 100; i += 10) {
+                    progressBar.style.width = `${i}%`;
+                    statusText.textContent = `Mixing... ${i}%`;
+                    await this.delay(200);
+                }
+
+                // Create a simple audio blob (in real implementation, this would mix the actual audio)
+                const audioContext = new AudioContext();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = 'sine';
+                gainNode.gain.value = 0.1;
+                
+                // Record the audio
+                const destination = audioContext.createMediaStreamDestination();
+                gainNode.connect(destination);
+                
+                const recorder = new MediaRecorder(destination.stream);
+                const chunks = [];
+                
+                recorder.ondataavailable = (e) => chunks.push(e.data);
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'audio/mp3' });
+                    this.downloadBlob(blob, 'tuneweave-mix.mp3');
+                };
+                
+                recorder.start();
+                oscillator.start();
+                
+                setTimeout(() => {
+                    oscillator.stop();
+                    recorder.stop();
+                    audioContext.close();
+                }, 1000);
+            }
+
+            static async exportVisualizerVideo(progressBar, statusText) {
+                if (!window.MediaRecorder) {
+                    throw new Error('Video recording not supported in this browser');
+                }
+
+                statusText.textContent = 'Recording visualizer...';
+                
+                const canvas = document.getElementById('visualizerCanvas');
+                const stream = canvas.captureStream(30);
+                const chunks = [];
+                
+                const recorder = new MediaRecorder(stream, { 
+                    mimeType: 'video/webm;codecs=vp9',
+                    videoBitsPerSecond: 2500000
+                });
+
+                recorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        chunks.push(e.data);
+                    }
+                };
+                
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    this.downloadBlob(blob, 'tuneweave-visualizer.webm');
+                };
+
+                // Record for 5 seconds
+                recorder.start();
+                
+                for (let i = 0; i <= 100; i += 20) {
+                    progressBar.style.width = `${i}%`;
+                    statusText.textContent = `Recording... ${i}%`;
+                    await this.delay(1000);
+                }
+
+                recorder.stop();
+            }
+
+            static exportProjectFile() {
+                const projectData = {
+                    version: '1.0',
+                    layers: appState.layers.map(layer => ({
+                        name: layer.name,
+                        color: layer.color,
+                        volume: layer.volume,
+                        pan: layer.pan
+                    })),
+                    blendMode: appState.blendMode,
+                    exportDate: new Date().toISOString()
+                };
+                
+                const jsonString = JSON.stringify(projectData, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                this.downloadBlob(blob, 'tuneweave-project.json');
+            }
+
+            static downloadBlob(blob, filename) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            static showConfetti() {
+                for (let i = 0; i < 30; i++) {
+                    this.createConfettiPiece();
+                }
+            }
+
+            static createConfettiPiece() {
+                const confetti = document.createElement('div');
+                confetti.style.cssText = `
+                    position: fixed;
+                    width: 10px;
+                    height: 10px;
+                    background: hsl(${Math.random() * 360}, 70%, 60%);
+                    border-radius: 2px;
+                    pointer-events: none;
+                    z-index: 3000;
+                    top: -10px;
+                    left: ${Math.random() * 100}vw;
+                `;
+                document.body.appendChild(confetti);
+                
+                const animation = confetti.animate([
+                    { transform: 'translateY(0) rotate(0deg)', opacity: 1 },
+                    { transform: `translateY(100vh) rotate(${Math.random() * 360}deg)`, opacity: 0 }
+                ], {
+                    duration: 2000 + Math.random() * 1000,
+                    easing: 'cubic-bezier(0.1, 0.8, 0.2, 1)'
+                });
+                
+                animation.onfinish = () => confetti.remove();
+            }
+
+            static delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            static handleKeyboardShortcut(e) {
+                if (e.target.tagName === 'INPUT') return;
+
+                switch (e.key) {
+                    case ' ': // Space - Play/Pause
+                        e.preventDefault();
+                        this.togglePlayback();
+                        break;
+                    case 'Escape': // Close modals
+                        document.querySelectorAll('.modal').forEach(modal => {
+                            modal.classList.remove('active');
+                        });
+                        break;
+                    case 'l': // Loop
+                    case 'L':
+                        e.preventDefault();
+                        this.toggleLoop();
+                        break;
+                    case 'm': // Mute
+                    case 'M':
+                        e.preventDefault();
+                        this.toggleMute();
+                        break;
+                }
+            }
+
+            static showNotification(message, type = 'success') {
+                // Simple notification system
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: ${type === 'error' ? 'var(--accent-danger)' : 'var(--accent-success)'};
+                    color: white;
+                    padding: 12px 16px;
+                    border-radius: var(--border-radius);
+                    z-index: 1000;
+                    animation: fadeIn 0.3s ease;
+                    max-width: 300px;
+                    box-shadow: var(--glow);
+                `;
+                notification.textContent = message;
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+
+            static showError(message) {
+                this.showNotification(message, 'error');
+            }
+
+            static saveLayerOrder() {
+                // In a real app, this would save to localStorage or send to server
+                console.log('Layer order saved:', appState.layers.map(l => l.name));
+            }
+
+            static updateCollaborationAvatars() {
+                // Update avatar positions based on current layer configuration
+                const avatars = document.querySelectorAll('.avatar');
+                avatars.forEach((avatar, index) => {
+                    const angle = (index / avatars.length) * Math.PI * 2;
+                    const radius = 120 + (index * 20);
+                    gsap.to(avatar, {
+                        x: Math.cos(angle) * radius,
+                        y: Math.sin(angle) * radius,
+                        duration: 1,
+                        ease: 'back.out(1.7)'
+                    });
+                });
+            }
+        }
+
+        // =============================================================================
+        // VISUALIZATION SYSTEM
+        // =============================================================================
+        class Visualizer {
+            static init() {
+                this.canvas = document.getElementById('visualizerCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.animationId = null;
+                this.dataArray = null;
+                this.bufferLength = null;
+
+                this.setupCanvas();
+                this.setupAnalyser();
+            }
+
+            static setupCanvas() {
+                const container = this.canvas.parentElement;
+                const updateSize = () => {
+                    this.canvas.width = container.clientWidth;
+                    this.canvas.height = container.clientHeight;
+                };
+
+                updateSize();
+                window.addEventListener('resize', updateSize);
+            }
+
+            static setupAnalyser() {
+                if (appState.analyser) {
+                    this.bufferLength = appState.analyser.frequencyBinCount;
+                    this.dataArray = new Uint8Array(this.bufferLength);
+                }
+            }
+
+            static startAnimation() {
+                if (this.animationId) return;
+                
+                const animate = () => {
+                    this.animationId = requestAnimationFrame(animate);
+                    this.draw();
+                };
+                animate();
+            }
+
+            static stopAnimation() {
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+            }
+
+            static draw() {
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+
+                // Clear canvas with fade effect for trails
+                this.ctx.fillStyle = 'rgba(14, 15, 47, 0.1)';
+                this.ctx.fillRect(0, 0, width, height);
+
+                if (!appState.analyser || !this.dataArray) return;
+
+                // Get frequency data
+                appState.analyser.getByteFrequencyData(this.dataArray);
+
+                // Draw based on current blend mode
+                switch (appState.blendMode) {
+                    case 'dreamy':
+                        this.drawDreamyVisualization(width, height);
+                        break;
+                    case 'echo':
+                        this.drawEchoVisualization(width, height);
+                        break;
+                    case 'bounce':
+                        this.drawBounceVisualization(width, height);
+                        break;
+                    case 'harmony':
+                        this.drawHarmonyVisualization(width, height);
+                        break;
+                    case 'pulse':
+                        this.drawPulseVisualization(width, height);
+                        break;
+                    case 'glitch':
+                        this.drawGlitchVisualization(width, height);
+                        break;
+                    default:
+                        this.drawDefaultVisualization(width, height);
+                }
+            }
+
+            static drawDreamyVisualization(width, height) {
+                const centerX = width / 2;
+                const centerY = height / 2;
+                const baseRadius = Math.min(width, height) * 0.2;
+
+                this.ctx.save();
+                this.ctx.translate(centerX, centerY);
+
+                // Rotating circular waveform
+                for (let i = 0; i < this.bufferLength; i++) {
+                    const value = this.dataArray[i] / 255;
+                    const angle = (i / this.bufferLength) * Math.PI * 2;
+                    const radius = baseRadius + value * 200;
+
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+
+                    const hue = (i / this.bufferLength) * 360;
+                    this.ctx.fillStyle = `hsla(${hue}, 70%, 60%, ${value * 0.8})`;
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, value * 10 + 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+
+                this.ctx.restore();
+            }
+
+            static drawEchoVisualization(width, height) {
+                const centerX = width / 2;
+                const centerY = height / 2;
+
+                // Concentric circles with echo effect
+                for (let echo = 0; echo < 3; echo++) {
+                    const scale = 1 - echo * 0.2;
+                    const opacity = 0.7 - echo * 0.2;
+
+                    this.ctx.save();
+                    this.ctx.translate(centerX, centerY);
+                    this.ctx.scale(scale, scale);
+
+                    for (let i = 0; i < this.bufferLength; i += 4) {
+                        const value = this.dataArray[i] / 255;
+                        const angle = (i / this.bufferLength) * Math.PI * 2;
+                        const radius = 50 + value * 150;
+
+                        const x = Math.cos(angle) * radius;
+                        const y = Math.sin(angle) * radius;
+
+                        this.ctx.strokeStyle = `rgba(139, 92, 246, ${opacity * value})`;
+                        this.ctx.lineWidth = value * 8 + 1;
+
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(0, 0);
+                        this.ctx.lineTo(x, y);
+                        this.ctx.stroke();
+                    }
+
+                    this.ctx.restore();
+                }
+            }
+
+            static drawBounceVisualization(width, height) {
+                const barWidth = width / this.bufferLength;
+                const centerY = height / 2;
+
+                for (let i = 0; i < this.bufferLength; i++) {
+                    const value = this.dataArray[i] / 255;
+                    const barHeight = value * height * 0.8;
+                    const x = i * barWidth;
+
+                    const hue = (i / this.bufferLength) * 120 + 180;
+                    this.ctx.fillStyle = `hsla(${hue}, 80%, 60%, ${value})`;
+
+                    // Bouncing bars
+                    this.ctx.fillRect(x, centerY - barHeight / 2, barWidth - 1, barHeight);
+                    
+                    // Reflection
+                    this.ctx.fillStyle = `hsla(${hue}, 80%, 60%, ${value * 0.3})`;
+                    this.ctx.fillRect(x, centerY + barHeight / 2, barWidth - 1, barHeight * 0.5);
+                }
+            }
+
+            static drawHarmonyVisualization(width, height) {
+                const centerX = width / 2;
+                const centerY = height / 2;
+
+                // Layered harmonic circles
+                for (let layer = 0; layer < appState.layers.length; layer++) {
+                    const color = appState.layers[layer].color;
+                    const radius = 80 + layer * 40;
+
+                    this.ctx.save();
+                    this.ctx.translate(centerX, centerY);
+                    this.ctx.rotate(Date.now() * 0.001 * (layer + 1) * 0.1);
+
+                    this.ctx.strokeStyle = color;
+                    this.ctx.lineWidth = 3;
+                    this.ctx.globalAlpha = appState.layers[layer].volume;
+
+                    // Create wavy circle based on audio data
+                    this.ctx.beginPath();
+                    for (let i = 0; i <= 360; i += 10) {
+                        const dataIndex = Math.floor((i / 360) * this.bufferLength);
+                        const value = this.dataArray[dataIndex] / 255;
+                        const currentRadius = radius + value * 50;
+
+                        const angle = (i * Math.PI) / 180;
+                        const x = Math.cos(angle) * currentRadius;
+                        const y = Math.sin(angle) * currentRadius;
+
+                        if (i === 0) {
+                            this.ctx.moveTo(x, y);
+                        } else {
+                            this.ctx.lineTo(x, y);
+                        }
+                    }
+                    this.ctx.closePath();
+                    this.ctx.stroke();
+
+                    this.ctx.restore();
+                }
+            }
+
+            static drawPulseVisualization(width, height) {
+                const centerX = width / 2;
+                const centerY = height / 2;
+
+                // Calculate average volume for pulse effect
+                let sum = 0;
+                for (let i = 0; i < this.bufferLength; i++) {
+                    sum += this.dataArray[i];
+                }
+                const average = sum / this.bufferLength / 255;
+                const pulseScale = 1 + average * 0.5;
+
+                // Pulsing central circle
+                this.ctx.save();
+                this.ctx.translate(centerX, centerY);
+                this.ctx.scale(pulseScale, pulseScale);
+
+                const gradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, 100);
+                gradient.addColorStop(0, 'rgba(139, 92, 246, 0.8)');
+                gradient.addColorStop(1, 'rgba(139, 92, 246, 0)');
+
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                this.ctx.arc(0, 0, 100, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                this.ctx.restore();
+
+                // Particle burst
+                for (let i = 0; i < this.bufferLength; i += 8) {
+                    const value = this.dataArray[i] / 255;
+                    if (value > 0.3) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const distance = value * 200;
+                        const x = centerX + Math.cos(angle) * distance;
+                        const y = centerY + Math.sin(angle) * distance;
+
+                        this.ctx.fillStyle = `hsla(${Math.random() * 360}, 70%, 60%, ${value})`;
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, value * 8 + 2, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                }
+            }
+
+            static drawGlitchVisualization(width, height) {
+                // Glitch effect with random offsets
+                const barWidth = width / this.bufferLength;
+
+                for (let i = 0; i < this.bufferLength; i++) {
+                    const value = this.dataArray[i] / 255;
+                    const barHeight = value * height;
+
+                    // Random glitch offsets
+                    const offsetX = (Math.random() - 0.5) * 20 * value;
+                    const offsetY = (Math.random() - 0.5) * 20 * value;
+
+                    const x = i * barWidth + offsetX;
+                    const y = offsetY;
+
+                    // Random colors for glitch effect
+                    const colors = ['#8b5cf6', '#ec4899', '#06b6d4', '#10b981'];
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+
+                    this.ctx.fillStyle = color;
+                    this.ctx.fillRect(x, y, barWidth - 1, barHeight);
+
+                    // Glitch lines
+                    if (Math.random() > 0.9) {
+                        this.ctx.strokeStyle = '#ffffff';
+                        this.ctx.lineWidth = 1;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(0, y + barHeight);
+                        this.ctx.lineTo(width, y + barHeight);
+                        this.ctx.stroke();
+                    }
+                }
+            }
+
+            static drawDefaultVisualization(width, height) {
+                // Simple circular waveform
+                const centerX = width / 2;
+                const centerY = height / 2;
+                const radius = Math.min(width, height) * 0.3;
+
+                this.ctx.save();
+                this.ctx.translate(centerX, centerY);
+
+                this.ctx.strokeStyle = '#8b5cf6';
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+
+                for (let i = 0; i < this.bufferLength; i++) {
+                    const value = this.dataArray[i] / 255;
+                    const angle = (i / this.bufferLength) * Math.PI * 2;
+                    const currentRadius = radius + value * 100;
+
+                    const x = Math.cos(angle) * currentRadius;
+                    const y = Math.sin(angle) * currentRadius;
+
+                    if (i === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                }
+
+                this.ctx.closePath();
+                this.ctx.stroke();
+                this.ctx.restore();
+            }
+
+            static setBlendMode(mode) {
+                // Update visualization style based on blend mode
+                this.canvas.style.filter = this.getBlendModeFilter(mode);
+            }
+
+            static getBlendModeFilter(mode) {
+                const filters = {
+                    dreamy: 'blur(1px) brightness(1.2)',
+                    echo: 'contrast(1.5) saturate(1.8)',
+                    bounce: 'hue-rotate(90deg) brightness(1.3)',
+                    harmony: 'sepia(0.3) hue-rotate(45deg)',
+                    pulse: 'brightness(1.4) contrast(1.2)',
+                    glitch: 'contrast(2) brightness(1.1)'
+                };
+                return filters[mode] || 'none';
+            }
+
+            static updateVisualization() {
+                // Force redraw when layers change
+                if (this.animationId) {
+                    this.draw();
+                }
+            }
+        }
+
+        // =============================================================================
+        // INITIALIZE APPLICATION
+        // =============================================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check for Web Audio API support
+            if (!window.AudioContext && !window.webkitAudioContext) {
+                alert('Web Audio API is not supported in this browser. Please use Chrome or Firefox for the full experience.');
+            }
+
+            // Start with landing screen animations
+            LandingAnimations.init();
+            
+            console.log('TuneWeave initialized! 🎵');
+        });
+
+    </script>
+</body>
+</html>
